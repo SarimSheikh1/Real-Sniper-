@@ -1,26 +1,31 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SNIPER SHADOW: TACTICAL OVERWATCH</title>
     <style>
         :root {
-            --primary-color: #4CAF50;
-            --danger-color: #f44336;
-            --bg-dark: rgba(0, 0, 0, 0.8);
+            --primary-color: #00ff41;
+            /* Matrix Green / Tactical Green */
+            --danger-color: #ff3e3e;
+            --accent-color: #00d4ff;
+            --bg-dark: rgba(0, 0, 0, 0.85);
+            --panel-bg: rgba(10, 20, 10, 0.9);
             --text-main: #e0e0e0;
-            --hud-green: rgba(76, 175, 80, 0.7);
+            --hud-glow: 0 0 10px rgba(0, 255, 65, 0.5);
         }
 
-        body, html {
+        body,
+        html {
             margin: 0;
             padding: 0;
             width: 100%;
             height: 100%;
             overflow: hidden;
             background-color: #000;
-            font-family: 'Courier New', Courier, monospace;
+            font-family: 'Segoe UI', 'Roboto', 'Courier New', sans-serif;
             color: var(--text-main);
             user-select: none;
         }
@@ -42,52 +47,59 @@
             width: 100%;
             height: 100%;
             z-index: 10;
-            pointer-events: none; /* Let clicks pass through to canvas when playing */
+            pointer-events: none;
         }
 
-        /* Main Menu */
-        #main-menu {
+        /* Menus */
+        .menu-screen {
             position: absolute;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            background: radial-gradient(circle, #1a1a2e 0%, #000000 100%);
+            background: radial-gradient(circle at center, #0a1a0a 0%, #000 100%);
             display: flex;
             flex-direction: column;
             justify-content: center;
             align-items: center;
             pointer-events: auto;
             z-index: 20;
+            transition: opacity 0.5s;
         }
 
         h1 {
-            font-size: 4rem;
+            font-size: 5rem;
             text-transform: uppercase;
-            letter-spacing: 5px;
-            text-shadow: 0 0 10px var(--primary-color);
-            margin-bottom: 10px;
-            text-align: center;
+            letter-spacing: 15px;
+            margin-bottom: 0;
+            background: linear-gradient(to bottom, #fff, var(--primary-color));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            filter: drop-shadow(0 0 15px var(--primary-color));
         }
 
         .subtitle {
             font-size: 1.2rem;
-            color: #888;
+            color: #aaa;
+            letter-spacing: 8px;
+            margin-bottom: 50px;
+        }
+
+        .menu-options {
+            display: flex;
+            gap: 20px;
             margin-bottom: 40px;
-            letter-spacing: 2px;
         }
 
         .btn {
-            background: transparent;
+            background: rgba(0, 40, 0, 0.3);
             color: var(--primary-color);
-            border: 2px solid var(--primary-color);
+            border: 1px solid var(--primary-color);
             padding: 15px 40px;
-            font-size: 1.5rem;
-            font-family: 'Courier New', Courier, monospace;
+            font-size: 1.2rem;
             text-transform: uppercase;
             cursor: pointer;
-            transition: all 0.3s ease;
-            margin: 10px;
+            transition: all 0.2s;
             position: relative;
             overflow: hidden;
         }
@@ -95,17 +107,47 @@
         .btn:hover {
             background: var(--primary-color);
             color: #000;
-            box-shadow: 0 0 20px var(--primary-color);
+            box-shadow: 0 0 30px var(--primary-color);
         }
 
-        .disclaimer {
-            position: absolute;
-            bottom: 20px;
-            max-width: 600px;
-            text-align: center;
-            font-size: 0.8rem;
-            color: #555;
-            line-height: 1.4;
+        .btn.active {
+            background: var(--primary-color);
+            color: #000;
+        }
+
+        /* Mission & Loadout Panels */
+        #mission-panel,
+        #loadout-panel {
+            background: var(--panel-bg);
+            border: 1px solid var(--primary-color);
+            padding: 30px;
+            width: 80%;
+            max-width: 1000px;
+            display: none;
+            flex-direction: column;
+            max-height: 70vh;
+            overflow-y: auto;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .card {
+            border: 1px solid #333;
+            padding: 15px;
+            cursor: pointer;
+            transition: 0.3s;
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .card:hover,
+        .card.selected {
+            border-color: var(--primary-color);
+            background: rgba(0, 255, 65, 0.1);
         }
 
         /* HUD */
@@ -121,22 +163,9 @@
         .hud-element {
             position: absolute;
             color: var(--primary-color);
-            text-shadow: 0 0 5px var(--primary-color);
-            font-size: 1.2rem;
+            text-shadow: var(--hud-glow);
+            font-family: 'Consolas', monospace;
             pointer-events: none;
-        }
-
-        #crosshair {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            width: 4px;
-            height: 4px;
-            background-color: rgba(255, 255, 255, 0.8);
-            border-radius: 50%;
-            box-shadow: 0 0 5px rgba(0, 0, 0, 0.5);
-            transition: opacity 0.2s;
         }
 
         #scope-overlay {
@@ -145,94 +174,187 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background: radial-gradient(circle, transparent 20%, rgba(0,0,0,0.9) 60%, #000 100%);
+            background: radial-gradient(circle, transparent 25%, rgba(0, 0, 0, 0.95) 55%, #000 100%);
             display: none;
             justify-content: center;
             align-items: center;
         }
 
-        .scope-line {
+        .reticle-line {
             position: absolute;
-            background-color: rgba(0, 0, 0, 0.8);
+            background: rgba(0, 255, 65, 0.8);
         }
 
-        .scope-line.horizontal {
-            width: 100%;
-            height: 2px;
-            top: 50%;
-            transform: translateY(-50%);
-        }
-
-        .scope-line.vertical {
-            width: 2px;
+        .reticle-v {
+            width: 1px;
             height: 100%;
             left: 50%;
-            transform: translateX(-50%);
         }
-        
+
+        .reticle-h {
+            height: 1px;
+            width: 100%;
+            top: 50%;
+        }
+
         .mil-dot {
             position: absolute;
-            width: 6px;
-            height: 2px;
-            background-color: rgba(0, 0, 0, 0.8);
+            width: 4px;
+            height: 1px;
+            background: var(--primary-color);
             left: 50%;
             transform: translateX(-50%);
         }
-        
-        .mil-dot.horizontal {
-            width: 2px;
-            height: 6px;
+
+        .mil-dot.h {
+            width: 1px;
+            height: 4px;
             top: 50%;
             transform: translateY(-50%);
             left: auto;
         }
 
-        /* Specific HUD Positions */
-        #compass { top: 20px; left: 50%; transform: translateX(-50%); font-size: 1.5rem; letter-spacing: 5px; }
-        #wind-indicator { top: 20px; right: 20px; text-align: right; }
-        #range-finder { bottom: 20px; left: 20px; }
-        #ammo-counter { bottom: 20px; right: 20px; font-size: 2rem; }
-        #mission-timer { top: 20px; left: 20px; }
-        #score-display { top: 50px; right: 20px; text-align: right; }
-        #breath-meter { bottom: 60px; left: 50%; transform: translateX(-50%); width: 200px; height: 10px; border: 1px solid var(--primary-color); }
-        #breath-fill { width: 100%; height: 100%; background-color: var(--primary-color); transition: width 0.1s; }
-        
-        /* Hit Marker */
+        /* Specific HUD Info */
+        #top-bar {
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 90%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        #bottom-bar {
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 90%;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+        }
+
+        .stat-box {
+            background: rgba(0, 0, 0, 0.5);
+            padding: 10px 20px;
+            border-left: 3px solid var(--primary-color);
+        }
+
+        .stat-label {
+            font-size: 0.7rem;
+            color: #888;
+            text-transform: uppercase;
+            margin-bottom: 5px;
+        }
+
+        .stat-value {
+            font-size: 1.5rem;
+            font-weight: bold;
+        }
+
+        #wind-vane {
+            width: 50px;
+            height: 50px;
+            border: 1px solid var(--primary-color);
+            border-radius: 50%;
+            position: relative;
+        }
+
+        #wind-arrow {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 2px;
+            height: 20px;
+            background: var(--primary-color);
+            transform-origin: top center;
+        }
+
+        #breath-container {
+            width: 200px;
+            height: 6px;
+            background: rgba(255, 255, 255, 0.1);
+            margin-top: 10px;
+            border-radius: 3px;
+            overflow: hidden;
+        }
+
+        #breath-bar {
+            width: 100%;
+            height: 100%;
+            background: var(--primary-color);
+            transition: width 0.1s;
+        }
+
+        /* Hit & Damage Markers */
         #hit-marker {
             position: absolute;
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            width: 20px;
-            height: 20px;
+            width: 40px;
+            height: 40px;
             opacity: 0;
-            pointer-events: none;
             transition: opacity 0.1s;
         }
-        .hit-line {
+
+        .hm-line {
             position: absolute;
             width: 2px;
-            height: 10px;
-            background-color: white;
-            top: 50%; left: 50%;
+            height: 15px;
+            background: #fff;
+            top: 50%;
+            left: 50%;
         }
-        .hit-line:nth-child(1) { transform: translate(-50%, -50%) rotate(45deg) translate(0, -10px); }
-        .hit-line:nth-child(2) { transform: translate(-50%, -50%) rotate(135deg) translate(0, -10px); }
-        .hit-line:nth-child(3) { transform: translate(-50%, -50%) rotate(225deg) translate(0, -10px); }
-        .hit-line:nth-child(4) { transform: translate(-50%, -50%) rotate(315deg) translate(0, -10px); }
 
-        #controls-help {
+        .hm-1 {
+            transform: translate(-50%, -50%) rotate(45deg) translate(0, -15px);
+        }
+
+        .hm-2 {
+            transform: translate(-50%, -50%) rotate(135deg) translate(0, -15px);
+        }
+
+        .hm-3 {
+            transform: translate(-50%, -50%) rotate(225deg) translate(0, -15px);
+        }
+
+        .hm-4 {
+            transform: translate(-50%, -50%) rotate(315deg) translate(0, -15px);
+        }
+
+        #impact-text {
             position: absolute;
-            bottom: 20px;
+            top: 45%;
+            left: 55%;
+            color: #fff;
+            font-weight: bold;
+            font-size: 1.2rem;
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        /* Notifications */
+        #notifier {
+            position: absolute;
+            top: 100px;
             left: 50%;
             transform: translateX(-50%);
-            font-size: 0.9rem;
-            color: rgba(255,255,255,0.5);
-            text-align: center;
+            background: rgba(0, 255, 65, 0.2);
+            border: 1px solid var(--primary-color);
+            padding: 10px 30px;
+            border-radius: 20px;
+            opacity: 0;
+            transition: 0.5s;
         }
 
+        .hidden {
+            display: none !important;
+        }
     </style>
 </head>
+
 <body>
 
     <div id="game-container"></div>
@@ -243,16 +365,19 @@
             <h1>SNIPER SHADOW</h1>
             <div class="subtitle">TACTICAL OVERWATCH</div>
             <button class="btn" id="start-btn">Deploy</button>
-            
+
             <div class="disclaimer">
-                WARNING: This game simulates realistic weapon systems and tactical scenarios. All targets are non-living: drones, robots, vehicles, holograms, and environmental objects. No violence against humans or animals is depicted or implied. Intended for mature audiences (18+) who appreciate realistic ballistics.
+                WARNING: This game simulates realistic weapon systems and tactical scenarios. All targets are
+                non-living: drones, robots, vehicles, holograms, and environmental objects. No violence against humans
+                or animals is depicted or implied. Intended for mature audiences (18+) who appreciate realistic
+                ballistics.
             </div>
         </div>
 
         <!-- HUD -->
         <div id="hud">
             <div id="crosshair"></div>
-            
+
             <div id="scope-overlay">
                 <div class="scope-line horizontal"></div>
                 <div class="scope-line vertical"></div>
@@ -265,7 +390,7 @@
             <div id="score-display" class="hud-element">PTS: 0</div>
             <div id="range-finder" class="hud-element">RNG: --- m</div>
             <div id="ammo-counter" class="hud-element">5 / 5</div>
-            
+
             <div id="breath-meter" class="hud-element">
                 <div id="breath-fill"></div>
             </div>
@@ -338,26 +463,26 @@
         function initScope() {
             const scope = ui.scopeOverlay;
             // Vertical dots
-            for(let i=1; i<=10; i++) {
-                if(i==5) continue; // center
+            for (let i = 1; i <= 10; i++) {
+                if (i == 5) continue; // center
                 let dot1 = document.createElement('div');
                 dot1.className = 'mil-dot';
-                dot1.style.top = `calc(50% - ${i*4}%)`;
+                dot1.style.top = `calc(50% - ${i * 4}%)`;
                 let dot2 = document.createElement('div');
                 dot2.className = 'mil-dot';
-                dot2.style.top = `calc(50% + ${i*4}%)`;
+                dot2.style.top = `calc(50% + ${i * 4}%)`;
                 scope.appendChild(dot1);
                 scope.appendChild(dot2);
             }
             // Horizontal dots
-            for(let i=1; i<=10; i++) {
-                if(i==5) continue;
+            for (let i = 1; i <= 10; i++) {
+                if (i == 5) continue;
                 let dot1 = document.createElement('div');
                 dot1.className = 'mil-dot horizontal';
-                dot1.style.left = `calc(50% - ${i*4}%)`;
+                dot1.style.left = `calc(50% - ${i * 4}%)`;
                 let dot2 = document.createElement('div');
                 dot2.className = 'mil-dot horizontal';
-                dot2.style.left = `calc(50% + ${i*4}%)`;
+                dot2.style.left = `calc(50% + ${i * 4}%)`;
                 scope.appendChild(dot1);
                 scope.appendChild(dot2);
             }
@@ -366,10 +491,10 @@
 
         // Audio Context (Synthesized Sounds)
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        
+
         function playGunshot() {
-            if(audioCtx.state === 'suspended') audioCtx.resume();
-            
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+
             // Explosion/Bang
             const osc = audioCtx.createOscillator();
             const gainNode = audioCtx.createGain();
@@ -378,7 +503,7 @@
             osc.frequency.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.5);
             gainNode.gain.setValueAtTime(1, audioCtx.currentTime);
             gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.5);
-            
+
             // Noise (Gravely crack)
             const bufferSize = audioCtx.sampleRate * 0.5; // 0.5 seconds
             const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
@@ -468,20 +593,20 @@
             const groundGeo = new THREE.PlaneGeometry(3000, 3000, 64, 64);
             // Simple rough terrain via vertex manipulation
             const pos = groundGeo.attributes.position;
-            for(let i=0; i<pos.count; i++) {
+            for (let i = 0; i < pos.count; i++) {
                 const x = pos.getX(i);
                 const y = pos.getY(i);
                 // Leave center relatively flat
-                const dist = Math.sqrt(x*x + y*y);
+                const dist = Math.sqrt(x * x + y * y);
                 let z = 0;
-                if(dist > 50) {
-                    z = (Math.random() * 5) + ((dist-50) * 0.1 * Math.random());
+                if (dist > 50) {
+                    z = (Math.random() * 5) + ((dist - 50) * 0.1 * Math.random());
                 }
                 pos.setZ(i, z);
             }
             groundGeo.computeVertexNormals();
 
-            const groundMat = new THREE.MeshStandardMaterial({ 
+            const groundMat = new THREE.MeshStandardMaterial({
                 color: 0xc2b280, // Sand color
                 roughness: 0.9,
                 metalness: 0.1
@@ -494,21 +619,21 @@
             // Add some procedural rocks
             const rockGeo = new THREE.DodecahedronGeometry(1);
             const rockMat = new THREE.MeshStandardMaterial({ color: 0x555555, roughness: 0.8 });
-            
-            for(let i=0; i<200; i++) {
+
+            for (let i = 0; i < 200; i++) {
                 const rock = new THREE.Mesh(rockGeo, rockMat);
                 const angle = Math.random() * Math.PI * 2;
                 const radius = 50 + Math.random() * 1000;
                 rock.position.x = Math.cos(angle) * radius;
                 rock.position.z = Math.sin(angle) * radius;
-                
+
                 // Get ground height at this point (approx)
                 let height = 0;
-                if(radius > 50) height = (radius-50) * 0.05; // Rough approximation of terrain logic
+                if (radius > 50) height = (radius - 50) * 0.05; // Rough approximation of terrain logic
                 rock.position.y = height + Math.random() * 2;
-                
-                rock.scale.set(1 + Math.random()*5, 1 + Math.random()*5, 1 + Math.random()*5);
-                rock.rotation.set(Math.random()*Math.PI, Math.random()*Math.PI, 0);
+
+                rock.scale.set(1 + Math.random() * 5, 1 + Math.random() * 5, 1 + Math.random() * 5);
+                rock.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, 0);
                 rock.castShadow = true;
                 rock.receiveShadow = true;
                 scene.add(rock);
@@ -528,7 +653,7 @@
         // Targets (Drones)
         function spawnDrone() {
             const droneGroup = new THREE.Group();
-            
+
             // Body
             const bodyGeo = new THREE.BoxGeometry(1, 0.5, 1);
             const bodyMat = new THREE.MeshStandardMaterial({ color: 0x222222, metalness: 0.8, roughness: 0.2 });
@@ -542,7 +667,7 @@
                 [-0.6, 0.3, -0.6], [0.6, 0.3, -0.6],
                 [-0.6, 0.3, 0.6], [0.6, 0.3, 0.6]
             ];
-            
+
             droneGroup.rotors = [];
             positions.forEach(pos => {
                 const rotor = new THREE.Mesh(rotorGeo, rotorMat);
@@ -568,44 +693,44 @@
             );
 
             // Add bounding box for collision
-            droneGroup.userData = { 
-                type: 'drone', 
+            droneGroup.userData = {
+                type: 'drone',
                 active: true,
-                box: new THREE.Box3() 
+                box: new THREE.Box3()
             };
-            
+
             scene.add(droneGroup);
             state.targets.push(droneGroup);
         }
 
         // Spawn initial targets
-        for(let i=0; i<10; i++) spawnDrone();
+        for (let i = 0; i < 10; i++) spawnDrone();
 
         // Inputs
         const keys = {};
         document.addEventListener('keydown', e => {
             keys[e.code] = true;
-            if(e.code === 'ShiftLeft' && state.isPlaying && state.isADS) {
+            if (e.code === 'ShiftLeft' && state.isPlaying && state.isADS) {
                 state.isHoldingBreath = true;
             }
-            if(e.code === 'KeyR' && state.isPlaying) {
+            if (e.code === 'KeyR' && state.isPlaying) {
                 reload();
             }
         });
         document.addEventListener('keyup', e => {
             keys[e.code] = false;
-            if(e.code === 'ShiftLeft') state.isHoldingBreath = false;
+            if (e.code === 'ShiftLeft') state.isHoldingBreath = false;
         });
 
         document.addEventListener('mousedown', e => {
-            if(!state.isPlaying) return;
-            if(e.button === 0) fire();
-            if(e.button === 2) toggleADS();
+            if (!state.isPlaying) return;
+            if (e.button === 0) fire();
+            if (e.button === 2) toggleADS();
         });
 
         document.addEventListener('mousemove', e => {
-            if(!state.isPlaying || document.pointerLockElement !== document.body) return;
-            
+            if (!state.isPlaying || document.pointerLockElement !== document.body) return;
+
             const movementX = e.movementX || e.mozMovementX || e.webkitMovementX || 0;
             const movementY = e.movementY || e.mozMovementY || e.webkitMovementY || 0;
 
@@ -615,7 +740,7 @@
             pitchObject.rotation.x -= movementY * sensitivity;
 
             // Clamp pitch
-            pitchObject.rotation.x = Math.max(-Math.PI/2, Math.min(Math.PI/2, pitchObject.rotation.x));
+            pitchObject.rotation.x = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, pitchObject.rotation.x));
         });
 
         // Prevent context menu
@@ -625,7 +750,7 @@
         function startGame() {
             document.body.requestPointerLock = document.body.requestPointerLock || document.body.mozRequestPointerLock;
             document.body.requestPointerLock();
-            
+
             ui.mainMenu.style.display = 'none';
             ui.hud.style.display = 'block';
             state.isPlaying = true;
@@ -635,7 +760,7 @@
 
         function toggleADS() {
             state.isADS = !state.isADS;
-            if(state.isADS) {
+            if (state.isADS) {
                 camera.fov = 60 / config.weapons.m24.zoomLevels[1]; // Zoom in
                 ui.crosshair.style.opacity = 0;
                 ui.scopeOverlay.style.display = 'flex';
@@ -650,12 +775,12 @@
 
         let isBolting = false;
         function fire() {
-            if(state.ammo <= 0 || isBolting) return;
-            
+            if (state.ammo <= 0 || isBolting) return;
+
             state.ammo--;
             isBolting = true;
             playGunshot();
-            
+
             // Recoil
             pitchObject.rotation.x += 0.05;
             yawObject.rotation.y += (Math.random() - 0.5) * 0.02;
@@ -664,9 +789,9 @@
             // Direction camera is facing
             const dir = new THREE.Vector3(0, 0, -1);
             dir.applyQuaternion(pitchObject.getWorldQuaternion(new THREE.Quaternion()));
-            
+
             // Add slight sway inaccuracy if not holding breath
-            if(!state.isHoldingBreath) {
+            if (!state.isHoldingBreath) {
                 dir.x += (Math.random() - 0.5) * 0.002;
                 dir.y += (Math.random() - 0.5) * 0.002;
             }
@@ -687,15 +812,15 @@
 
             // Bolt cycle animation
             setTimeout(() => {
-                if(state.ammo > 0) isBolting = false;
+                if (state.ammo > 0) isBolting = false;
             }, config.weapons.m24.boltTime);
         }
 
         function reload() {
-            if(state.ammo === config.weapons.m24.magSize || isBolting) return;
+            if (state.ammo === config.weapons.m24.magSize || isBolting) return;
             isBolting = true;
-            if(state.isADS) toggleADS();
-            
+            if (state.isADS) toggleADS();
+
             setTimeout(() => {
                 state.ammo = config.weapons.m24.magSize;
                 isBolting = false;
@@ -715,31 +840,31 @@
         function updateHUD() {
             ui.ammoCounter.innerText = `${state.ammo} / ${config.weapons.m24.magSize}`;
             ui.scoreDisplay.innerText = `PTS: ${state.score}`;
-            
+
             // Raycast for range finder (center of screen)
             const raycaster = new THREE.Raycaster();
             raycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
-            
+
             // Check targets
             let hit = false;
-            for(let target of state.targets) {
-                if(!target.userData.active) continue;
+            for (let target of state.targets) {
+                if (!target.userData.active) continue;
                 target.userData.box.setFromObject(target);
-                if(raycaster.ray.intersectsBox(target.userData.box)) {
+                if (raycaster.ray.intersectsBox(target.userData.box)) {
                     const dist = raycaster.ray.origin.distanceTo(target.position);
                     ui.rangeFinder.innerText = `RNG: ${Math.round(dist)} m`;
                     hit = true;
                     break;
                 }
             }
-            if(!hit) ui.rangeFinder.innerText = `RNG: --- m`;
+            if (!hit) ui.rangeFinder.innerText = `RNG: --- m`;
 
             // Compass
             const angle = THREE.MathUtils.radToDeg(yawObject.rotation.y) % 360;
             let dirStr = "N";
-            if(angle > -45 && angle <= 45) dirStr = "N";
-            else if(angle > 45 && angle <= 135) dirStr = "W";
-            else if(angle > 135 || angle <= -135) dirStr = "S";
+            if (angle > -45 && angle <= 45) dirStr = "N";
+            else if (angle > 45 && angle <= 135) dirStr = "W";
+            else if (angle > 135 || angle <= -135) dirStr = "S";
             else dirStr = "E";
             ui.compass.innerText = dirStr;
         }
@@ -770,32 +895,32 @@
 
             const dt = clock.getDelta();
 
-            if(state.isPlaying) {
+            if (state.isPlaying) {
                 // Sway mechanics
                 swayTime += dt;
-                if(state.isADS) {
-                    if(state.isHoldingBreath && state.breath > 0) {
+                if (state.isADS) {
+                    if (state.isHoldingBreath && state.breath > 0) {
                         state.breath -= dt * 20; // Deplete breath
                         // Minimal sway
                         pitchObject.rotation.x += Math.sin(swayTime * 2) * 0.00005;
                         yawObject.rotation.y += Math.cos(swayTime * 1.5) * 0.00005;
                     } else {
-                        if(!state.isHoldingBreath && state.breath < 100) state.breath += dt * 10;
+                        if (!state.isHoldingBreath && state.breath < 100) state.breath += dt * 10;
                         // Normal scope sway
                         pitchObject.rotation.x += Math.sin(swayTime * 1.5) * 0.0003;
                         yawObject.rotation.y += Math.cos(swayTime * 1.2) * 0.0003;
                     }
                 } else {
-                    if(state.breath < 100) state.breath += dt * 10;
+                    if (state.breath < 100) state.breath += dt * 10;
                 }
                 ui.breathFill.style.width = `${state.breath}%`;
-                
-                if(state.breath <= 0) state.isHoldingBreath = false;
+
+                if (state.breath <= 0) state.isHoldingBreath = false;
 
                 // Bullet Physics
-                for(let i = state.bullets.length - 1; i >= 0; i--) {
+                for (let i = state.bullets.length - 1; i >= 0; i--) {
                     const b = state.bullets[i];
-                    
+
                     // Store previous position for continuous collision detection
                     const prevPos = b.position.clone();
 
@@ -813,38 +938,38 @@
                     let destroyedTarget = false;
                     const bulletSegment = new THREE.Line3(prevPos, b.position);
 
-                    for(let j = 0; j < state.targets.length; j++) {
+                    for (let j = 0; j < state.targets.length; j++) {
                         const target = state.targets[j];
-                        if(!target.userData.active) continue;
-                        
+                        if (!target.userData.active) continue;
+
                         target.userData.box.setFromObject(target);
-                        
+
                         // Inflate box slightly to account for high velocity
                         target.userData.box.expandByScalar(0.5);
 
                         // Simple line-AABB intersection
-                        if(target.userData.box.intersectsSphere(new THREE.Sphere(b.position, 1))) {
+                        if (target.userData.box.intersectsSphere(new THREE.Sphere(b.position, 1))) {
                             // Hit!
                             target.userData.active = false;
                             scene.remove(target);
                             state.targets.splice(j, 1);
                             showHitMarker();
-                            
+
                             // Remove bullet
                             scene.remove(b.mesh);
                             state.bullets.splice(i, 1);
                             destroyedTarget = true;
-                            
+
                             // Spawn replacement
                             setTimeout(spawnDrone, 2000);
                             break;
                         }
                     }
 
-                    if(destroyedTarget) continue; // Bullet already removed
+                    if (destroyedTarget) continue; // Bullet already removed
 
                     // Ground collision
-                    if(b.position.y < 0 || b.life <= 0) {
+                    if (b.position.y < 0 || b.life <= 0) {
                         scene.remove(b.mesh);
                         state.bullets.splice(i, 1);
                     }
@@ -852,7 +977,7 @@
 
                 // Target Animation (Drones hover)
                 state.targets.forEach(target => {
-                    if(target.userData.active) {
+                    if (target.userData.active) {
                         // Bobbing
                         target.position.y += Math.sin(swayTime * 2 + target.position.x) * 0.05;
                         // Rotors spin
@@ -866,7 +991,7 @@
                 });
 
                 // Periodic UI update (Rangefinder)
-                if(Math.floor(swayTime*10) % 5 === 0) updateHUD();
+                if (Math.floor(swayTime * 10) % 5 === 0) updateHUD();
             }
 
             renderer.render(scene, camera);
@@ -876,4 +1001,5 @@
 
     </script>
 </body>
+
 </html>
